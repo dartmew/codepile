@@ -1,5 +1,6 @@
 from ignorer import load_gitignore, is_ignored
 from pathlib import Path
+from typing import Dict, List
 
 
 def collect_files(root_path: Path, follow_gitignore = True) -> list[Path]:
@@ -25,5 +26,12 @@ def collect_files(root_path: Path, follow_gitignore = True) -> list[Path]:
     return collected
 
 
-
-#root = Path(r'C:\Projects\Pets\codepile\tests\fixtures\test_project')
+def build_tree(files: List[Path]) -> Dict:
+    tree = {}
+    for path in files:
+        parts = path.parts
+        current = tree
+        for part in parts[:-1]:
+            current = current.setdefault(part, {})
+        current[parts[-1]] = None
+    return tree
