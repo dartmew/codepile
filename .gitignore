@@ -1,6 +1,11 @@
-env/
-.vscode/
-__pycache__/
-.replit
-index.html
 venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+coverage/
+htmlcov/
+dist/
+build/
+*.egg-info/
+*.egg

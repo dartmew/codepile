@@ -1,0 +1,3 @@
+setting1=value1
+setting2=42
+# this is a comment
