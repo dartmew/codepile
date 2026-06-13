@@ -5,7 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/pilepack)](https://pypi.org/project/pilepack/)
 [![Tests](https://img.shields.io/badge/tests-20%20passed-brightgreen)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-84%25-yellowgreen)](tests/)
-[![CLI](https://img.shields.io/badge/CLI-ready-blue)]()
+[![CLI](https://img.shields.io/badge/CLI-ready-blue)](#-usage)
 
 **Pack your codebase into a single file for AI analysis**  
 Combine all your project files into one text file — perfect for sending to LLMs (ChatGPT, Claude, Copilot, Deepseek, etc.).
@@ -128,6 +128,12 @@ TOTAL                     180     29    84%
 
 ## 🤝 Contributing
 Issues and pull requests are welcome! For major changes, please open an issue first to discuss.
+
+## 💬 Support
+
+Feel free to [open an issue](https://github.com/dartmew/pilepack/issues) for bugs, questions, or suggestions. I'll try to respond within a few days.
+
+This project is actively maintained (as of 2026).
 
 ## 🙏 Acknowledgements
 Inspired by the need to easily feed code into large language models.

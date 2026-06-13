@@ -17,6 +17,9 @@ dependencies = [
 [project.scripts]
 pilepack = "pilepack.cli:main"
 
+[project.urls]
+Source = "https://github.com/dartmew/pilepack"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pilepack*"]
