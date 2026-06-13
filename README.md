@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PyPI version](https://img.shields.io/pypi/v/pilepack)](https://pypi.org/project/pilepack/)
 [![Tests](https://img.shields.io/badge/tests-20%20passed-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-84%25-yellowgreen)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-84%25-yellowgreen)](#-testing)
 [![CLI](https://img.shields.io/badge/CLI-ready-blue)](#-usage)
 
 **Pack your codebase into a single file for AI analysis**  
