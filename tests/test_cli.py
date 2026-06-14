@@ -1,13 +1,16 @@
 import pytest
 from pathlib import Path
-from pilepack.cli import main, _generate_report
+from pilepack.cli import main, _stream_report
 import sys
+from io import StringIO
 
-def test_generate_report_no_content(test_project):
-    report = _generate_report(test_project, include_content=False, fmt="txt")
-    assert "--- FILE:" not in report
-    assert "test_project" in report
-    assert "main.py" in report
+def test_stream_report_no_content(test_project):
+    stream = StringIO()
+    _stream_report(test_project, stream, include_content=False, fmt="txt")
+    output = stream.getvalue()
+    assert "--- FILE:" not in output
+    assert "test_project" in output
+    assert "main.py" in output
 
 def test_cli_basic(test_project, capsys, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["pilepack", str(test_project), "--no-content"])

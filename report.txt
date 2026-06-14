@@ -29,6 +29,7 @@ pilepack
 ├── .github/
 │   └── workflows/
 │       └── publish.yml
+├── report.txt
 ├── README.md
 ├── pyproject.toml
 └── LICENSE
@@ -238,43 +239,55 @@ This project is actively maintained (as of 2026).
 Inspired by the need to easily feed code into large language models.
 
 
+--- FILE: report.txt ---
+
+
 --- FILE: pilepack\cli.py ---
 import argparse
 import sys
 from pathlib import Path
-
+from typing import TextIO
 from .collector import collect_files, build_tree
 from .reader import read_file
-from .formatter import render
+from .formatter import write_report
 
 
-def _generate_report(
+def _stream_report(
     root_path: Path,
-    include_content=True,
-    mask_secrets=False,
-    follow_gitignore=True,
-    follow_symlinks=False,
-    fmt="txt",
-):
+    stream: TextIO,
+    include_content: bool = True,
+    mask_secrets: bool = False,
+    follow_gitignore: bool = True,
+    follow_symlinks: bool = False,
+    fmt: str = "txt",
+) -> None:
+    """Generate report and write directly to stream (no memory accumulation)."""
     print("Scanning files...", file=sys.stderr, flush=True)
     files = collect_files(root_path, follow_gitignore=follow_gitignore, follow_symlinks=follow_symlinks)
     tree = build_tree(files)
 
-    files_content = []
-    if include_content:
-        total = len(files)
-        print(f"Reading {total} files...", file=sys.stderr, flush=True)
-        for rel_path in files:
+    root_name = root_path.name or str(root_path)
+
+    if not include_content:
+        # Empty generator – no file contents
+        def empty_gen():
+            return iter([])
+        write_report(stream, root_name, tree, empty_gen(), fmt=fmt)
+        return
+
+    total = len(files)
+    print(f"Reading {total} files...", file=sys.stderr, flush=True)
+
+    def content_generator():
+        for i, rel_path in enumerate(files, 1):
             abs_path = root_path / rel_path
             content = read_file(abs_path, mask_secrets=mask_secrets)
-            files_content.append((rel_path, content))
+            yield rel_path, content
+            if i % 100 == 0:
+                print(f"Processed {i}/{total} files...", file=sys.stderr, flush=True)
         print(f"Done. Read {total} files.", file=sys.stderr, flush=True)
-    else:
-        files_content = []
 
-    root_name = root_path.name or str(root_path)
-    report = render(root_name, tree, files_content, fmt=fmt)
-    return report
+    write_report(stream, root_name, tree, content_generator(), fmt=fmt)
 
 
 def main():
@@ -325,32 +338,37 @@ def main():
     args = parser.parse_args()
 
     root_path = Path(args.root).resolve()
+
     if not root_path.is_dir():
         print(f"Error: '{root_path}' is not a valid directory.", file=sys.stderr)
         sys.exit(1)
 
     try:
-        report = _generate_report(
-            root_path,
-            include_content=args.include_content,
-            mask_secrets=args.mask_secrets,
-            follow_gitignore=args.follow_gitignore,
-            follow_symlinks=args.follow_symlinks,
-            fmt=args.format,
-        )
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                _stream_report(
+                    root_path,
+                    f,
+                    include_content=args.include_content,
+                    mask_secrets=args.mask_secrets,
+                    follow_gitignore=args.follow_gitignore,
+                    follow_symlinks=args.follow_symlinks,
+                    fmt=args.format,
+                )
+            print(f"Report written to {args.output}")
+        else:
+            _stream_report(
+                root_path,
+                sys.stdout,
+                include_content=args.include_content,
+                mask_secrets=args.mask_secrets,
+                follow_gitignore=args.follow_gitignore,
+                follow_symlinks=args.follow_symlinks,
+                fmt=args.format,
+            )
     except Exception as e:
         print(f"Error generating report: {e}", file=sys.stderr)
         sys.exit(1)
-
-    if args.output:
-        try:
-            args.output.write_text(report, encoding='utf-8')
-            print(f"Report written to {args.output}")
-        except IOError as e:
-            print(f"Error writing to file: {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        print(report)
 
 
 if __name__ == "__main__":
@@ -374,9 +392,9 @@ def collect_files(root_path: Path, follow_gitignore: bool = True, follow_symlink
     collected = []
 
     for item in root_path.rglob('*'):
-        if item.name == '.gitignore':
+        if any(part == '.git' for part in item.parts):
             continue
-        if '.git' in item.parts:
+        if item.name == '.gitignore':
             continue
         if item.is_symlink() and not follow_symlinks:
             continue
@@ -400,7 +418,7 @@ def build_tree(files: List[Path]) -> Dict:
 
 
 --- FILE: pilepack\formatter.py ---
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TextIO
 from pathlib import Path
 
 
@@ -420,52 +438,61 @@ def _format_tree(tree: Dict, prefix: str = '', is_last: bool = True) -> str:
     return '\n'.join(lines)
 
 
-def _render_txt(root_name: str, tree: Dict, files_content: List[Tuple[Path, Optional[str]]]) -> str:
-    tree_str = _format_tree(tree)
-    output = [f"{root_name}\n{tree_str}"]
+def _write_txt(
+    stream: TextIO,
+    root_name: str,
+    tree: Dict,
+    files_content_gen,  # generator of (Path, Optional[str])
+) -> None:
 
-    if files_content:
-        output.append("\n" + "=" * 80 + "\n")
+    stream.write(f"{root_name}\n")
+    stream.write(_format_tree(tree))
+    stream.write("\n\n")
+    stream.write("=" * 80)
+    stream.write("\n\n")
 
-        for rel_path, content in files_content:
-
-            if content is not None:
-                output.append(f"--- FILE: {rel_path} ---")
-                output.append(content)
-                output.append("")
-            else:
-                output.append(f"--- FILE: {rel_path} [BINARY OR UNREADABLE] ---\n")
-    return "\n".join(output)
-
-
-def _render_md(root_name: str, tree: Dict, files_content: List[Tuple[Path, Optional[str]]]) -> str:
-    tree_str = _format_tree(tree)
-    output = [f"# {root_name}\n```\n{tree_str}\n```"]
-
-    if files_content:
-        output.append("\n---\n")
-
-        for rel_path, content in files_content:
-            
-            if content is not None:
-                ext = rel_path.suffix.lower()
-                lang = {
-                    '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
-                    '.html': 'html', '.css': 'css', '.json': 'json',
-                    '.md': 'markdown', '.yaml': 'yaml', '.yml': 'yaml',
-                    '.sh': 'bash', '.txt': 'text'
-                }.get(ext, 'text')
-                output.append(f"## `{rel_path}`\n```{lang}\n{content}\n```\n")
-            else:
-                output.append(f"## `{rel_path}`\n*[BINARY OR UNREADABLE]*\n")
-    return '\n'.join(output)
+    for rel_path, content in files_content_gen:
+        if content is not None:
+            stream.write(f"--- FILE: {rel_path} ---\n")
+            stream.write(content)
+            stream.write("\n\n")
+        else:
+            stream.write(f"--- FILE: {rel_path} [BINARY OR UNREADABLE] ---\n\n")
 
 
-def render(root_name: str, tree: Dict, files_content: List[Tuple[Path, Optional[str]]], fmt: str = "txt") -> str:
+def _write_md(
+    stream: TextIO,
+    root_name: str,
+    tree: Dict,
+    files_content_gen,
+) -> None:
+    stream.write(f"# {root_name}\n\n```\n{_format_tree(tree)}\n```\n\n---\n\n")
+
+    for rel_path, content in files_content_gen:
+        if content is not None:
+            ext = rel_path.suffix.lower()
+            lang = {
+                '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
+                '.html': 'html', '.css': 'css', '.json': 'json',
+                '.md': 'markdown', '.yaml': 'yaml', '.yml': 'yaml',
+                '.sh': 'bash', '.txt': 'text'
+            }.get(ext, 'text')
+            stream.write(f"## `{rel_path}`\n\n```{lang}\n{content}\n```\n\n")
+        else:
+            stream.write(f"## `{rel_path}`\n\n*[BINARY OR UNREADABLE]*\n\n")
+
+
+def write_report(
+    stream: TextIO,
+    root_name: str,
+    tree: Dict,
+    files_content_gen,
+    fmt: str = "txt",
+) -> None:
     if fmt == "txt":
-        return _render_txt(root_name, tree, files_content)
+        _write_txt(stream, root_name, tree, files_content_gen)
     elif fmt == "md":
-        return _render_md(root_name, tree, files_content)
+        _write_md(stream, root_name, tree, files_content_gen)
     else:
         raise ValueError(f"Unsupported format: {fmt}. Supported: 'txt', 'md'")
 
@@ -574,14 +601,17 @@ def test_project(tmp_path):
 --- FILE: tests\test_cli.py ---
 import pytest
 from pathlib import Path
-from pilepack.cli import main, _generate_report
+from pilepack.cli import main, _stream_report
 import sys
+from io import StringIO
 
-def test_generate_report_no_content(test_project):
-    report = _generate_report(test_project, include_content=False, fmt="txt")
-    assert "--- FILE:" not in report
-    assert "test_project" in report
-    assert "main.py" in report
+def test_stream_report_no_content(test_project):
+    stream = StringIO()
+    _stream_report(test_project, stream, include_content=False, fmt="txt")
+    output = stream.getvalue()
+    assert "--- FILE:" not in output
+    assert "test_project" in output
+    assert "main.py" in output
 
 def test_cli_basic(test_project, capsys, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["pilepack", str(test_project), "--no-content"])
@@ -689,7 +719,9 @@ def test_build_tree():
 --- FILE: tests\test_formatter.py ---
 import pytest
 from pathlib import Path
-from pilepack.formatter import render, _format_tree
+from io import StringIO
+from pilepack.formatter import write_report, _format_tree
+from pilepack.collector import collect_files, build_tree
 
 def test_format_tree_simple():
     tree = {"a.py": None, "b": {"c.py": None}}
@@ -697,25 +729,34 @@ def test_format_tree_simple():
     assert "b/" in result
     assert "a.py" in result
 
-def test_render_txt(test_project, tmp_path):
-    from pilepack.collector import collect_files, build_tree
+def test_write_report_txt(test_project):
     files = collect_files(test_project, follow_gitignore=False)
     tree = build_tree(files)
-    content_list = []
-    for rel in files:
-        if rel.name == "main.py":
-            content = (test_project / rel).read_text()
-            content_list.append((rel, content))
-    output = render("test_project", tree, content_list, fmt="txt")
+
+    def content_gen():
+        for rel in files:
+            if rel.name == "main.py":
+                content = (test_project / rel).read_text()
+                yield rel, content
+            else:
+                yield rel, None   # others skipped for brevity
+
+    stream = StringIO()
+    write_report(stream, "test_project", tree, content_gen(), fmt="txt")
+    output = stream.getvalue()
     assert "--- FILE: main.py ---" in output
     assert "def main():" in output
 
-def test_render_md(test_project):
-    from pilepack.collector import collect_files, build_tree
+def test_write_report_md(test_project):
     files = collect_files(test_project, follow_gitignore=False)
     tree = build_tree(files[:2])
-    content_list = [(files[0], (test_project / files[0]).read_text())]
-    output = render("test_project", tree, content_list, fmt="md")
+
+    def content_gen():
+        yield files[0], (test_project / files[0]).read_text()
+
+    stream = StringIO()
+    write_report(stream, "test_project", tree, content_gen(), fmt="md")
+    output = stream.getvalue()
     assert "## `main.py`" in output
     assert "```python" in output
 
@@ -886,3 +927,4 @@ jobs:
 
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+

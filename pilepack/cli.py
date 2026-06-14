@@ -1,39 +1,48 @@
 import argparse
 import sys
 from pathlib import Path
-
+from typing import TextIO
 from .collector import collect_files, build_tree
 from .reader import read_file
-from .formatter import render
+from .formatter import write_report
 
 
-def _generate_report(
+def _stream_report(
     root_path: Path,
-    include_content=True,
-    mask_secrets=False,
-    follow_gitignore=True,
-    follow_symlinks=False,
-    fmt="txt",
-):
+    stream: TextIO,
+    include_content: bool = True,
+    mask_secrets: bool = False,
+    follow_gitignore: bool = True,
+    follow_symlinks: bool = False,
+    fmt: str = "txt",
+) -> None:
+    """Generate report and write directly to stream (no memory accumulation)."""
     print("Scanning files...", file=sys.stderr, flush=True)
     files = collect_files(root_path, follow_gitignore=follow_gitignore, follow_symlinks=follow_symlinks)
     tree = build_tree(files)
 
-    files_content = []
-    if include_content:
-        total = len(files)
-        print(f"Reading {total} files...", file=sys.stderr, flush=True)
-        for rel_path in files:
+    root_name = root_path.name or str(root_path)
+
+    if not include_content:
+        # Empty generator – no file contents
+        def empty_gen():
+            return iter([])
+        write_report(stream, root_name, tree, empty_gen(), fmt=fmt)
+        return
+
+    total = len(files)
+    print(f"Reading {total} files...", file=sys.stderr, flush=True)
+
+    def content_generator():
+        for i, rel_path in enumerate(files, 1):
             abs_path = root_path / rel_path
             content = read_file(abs_path, mask_secrets=mask_secrets)
-            files_content.append((rel_path, content))
+            yield rel_path, content
+            if i % 100 == 0:
+                print(f"Processed {i}/{total} files...", file=sys.stderr, flush=True)
         print(f"Done. Read {total} files.", file=sys.stderr, flush=True)
-    else:
-        files_content = []
 
-    root_name = root_path.name or str(root_path)
-    report = render(root_name, tree, files_content, fmt=fmt)
-    return report
+    write_report(stream, root_name, tree, content_generator(), fmt=fmt)
 
 
 def main():
@@ -84,32 +93,37 @@ def main():
     args = parser.parse_args()
 
     root_path = Path(args.root).resolve()
+
     if not root_path.is_dir():
         print(f"Error: '{root_path}' is not a valid directory.", file=sys.stderr)
         sys.exit(1)
 
     try:
-        report = _generate_report(
-            root_path,
-            include_content=args.include_content,
-            mask_secrets=args.mask_secrets,
-            follow_gitignore=args.follow_gitignore,
-            follow_symlinks=args.follow_symlinks,
-            fmt=args.format,
-        )
+        if args.output:
+            with open(args.output, 'w', encoding='utf-8') as f:
+                _stream_report(
+                    root_path,
+                    f,
+                    include_content=args.include_content,
+                    mask_secrets=args.mask_secrets,
+                    follow_gitignore=args.follow_gitignore,
+                    follow_symlinks=args.follow_symlinks,
+                    fmt=args.format,
+                )
+            print(f"Report written to {args.output}")
+        else:
+            _stream_report(
+                root_path,
+                sys.stdout,
+                include_content=args.include_content,
+                mask_secrets=args.mask_secrets,
+                follow_gitignore=args.follow_gitignore,
+                follow_symlinks=args.follow_symlinks,
+                fmt=args.format,
+            )
     except Exception as e:
         print(f"Error generating report: {e}", file=sys.stderr)
         sys.exit(1)
-
-    if args.output:
-        try:
-            args.output.write_text(report, encoding='utf-8')
-            print(f"Report written to {args.output}")
-        except IOError as e:
-            print(f"Error writing to file: {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        print(report)
 
 
 if __name__ == "__main__":

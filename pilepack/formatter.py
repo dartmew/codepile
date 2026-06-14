@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TextIO
 from pathlib import Path
 
 
@@ -18,51 +18,60 @@ def _format_tree(tree: Dict, prefix: str = '', is_last: bool = True) -> str:
     return '\n'.join(lines)
 
 
-def _render_txt(root_name: str, tree: Dict, files_content: List[Tuple[Path, Optional[str]]]) -> str:
-    tree_str = _format_tree(tree)
-    output = [f"{root_name}\n{tree_str}"]
+def _write_txt(
+    stream: TextIO,
+    root_name: str,
+    tree: Dict,
+    files_content_gen,  # generator of (Path, Optional[str])
+) -> None:
 
-    if files_content:
-        output.append("\n" + "=" * 80 + "\n")
+    stream.write(f"{root_name}\n")
+    stream.write(_format_tree(tree))
+    stream.write("\n\n")
+    stream.write("=" * 80)
+    stream.write("\n\n")
 
-        for rel_path, content in files_content:
-
-            if content is not None:
-                output.append(f"--- FILE: {rel_path} ---")
-                output.append(content)
-                output.append("")
-            else:
-                output.append(f"--- FILE: {rel_path} [BINARY OR UNREADABLE] ---\n")
-    return "\n".join(output)
-
-
-def _render_md(root_name: str, tree: Dict, files_content: List[Tuple[Path, Optional[str]]]) -> str:
-    tree_str = _format_tree(tree)
-    output = [f"# {root_name}\n```\n{tree_str}\n```"]
-
-    if files_content:
-        output.append("\n---\n")
-
-        for rel_path, content in files_content:
-            
-            if content is not None:
-                ext = rel_path.suffix.lower()
-                lang = {
-                    '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
-                    '.html': 'html', '.css': 'css', '.json': 'json',
-                    '.md': 'markdown', '.yaml': 'yaml', '.yml': 'yaml',
-                    '.sh': 'bash', '.txt': 'text'
-                }.get(ext, 'text')
-                output.append(f"## `{rel_path}`\n```{lang}\n{content}\n```\n")
-            else:
-                output.append(f"## `{rel_path}`\n*[BINARY OR UNREADABLE]*\n")
-    return '\n'.join(output)
+    for rel_path, content in files_content_gen:
+        if content is not None:
+            stream.write(f"--- FILE: {rel_path} ---\n")
+            stream.write(content)
+            stream.write("\n\n")
+        else:
+            stream.write(f"--- FILE: {rel_path} [BINARY OR UNREADABLE] ---\n\n")
 
 
-def render(root_name: str, tree: Dict, files_content: List[Tuple[Path, Optional[str]]], fmt: str = "txt") -> str:
+def _write_md(
+    stream: TextIO,
+    root_name: str,
+    tree: Dict,
+    files_content_gen,
+) -> None:
+    stream.write(f"# {root_name}\n\n```\n{_format_tree(tree)}\n```\n\n---\n\n")
+
+    for rel_path, content in files_content_gen:
+        if content is not None:
+            ext = rel_path.suffix.lower()
+            lang = {
+                '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
+                '.html': 'html', '.css': 'css', '.json': 'json',
+                '.md': 'markdown', '.yaml': 'yaml', '.yml': 'yaml',
+                '.sh': 'bash', '.txt': 'text'
+            }.get(ext, 'text')
+            stream.write(f"## `{rel_path}`\n\n```{lang}\n{content}\n```\n\n")
+        else:
+            stream.write(f"## `{rel_path}`\n\n*[BINARY OR UNREADABLE]*\n\n")
+
+
+def write_report(
+    stream: TextIO,
+    root_name: str,
+    tree: Dict,
+    files_content_gen,
+    fmt: str = "txt",
+) -> None:
     if fmt == "txt":
-        return _render_txt(root_name, tree, files_content)
+        _write_txt(stream, root_name, tree, files_content_gen)
     elif fmt == "md":
-        return _render_md(root_name, tree, files_content)
+        _write_md(stream, root_name, tree, files_content_gen)
     else:
         raise ValueError(f"Unsupported format: {fmt}. Supported: 'txt', 'md'")

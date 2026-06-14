@@ -14,9 +14,9 @@ def collect_files(root_path: Path, follow_gitignore: bool = True, follow_symlink
     collected = []
 
     for item in root_path.rglob('*'):
-        if item.name == '.gitignore':
+        if any(part == '.git' for part in item.parts):
             continue
-        if '.git' in item.parts:
+        if item.name == '.gitignore':
             continue
         if item.is_symlink() and not follow_symlinks:
             continue
