@@ -7,9 +7,16 @@ from .reader import read_file
 from .formatter import render
 
 
-def _generate_report(root_path: Path, include_content=True, mask_secrets=False, follow_gitignore=True, fmt="txt"):
+def _generate_report(
+    root_path: Path,
+    include_content=True,
+    mask_secrets=False,
+    follow_gitignore=True,
+    follow_symlinks=False,
+    fmt="txt",
+):
     print("Scanning files...", file=sys.stderr, flush=True)
-    files = collect_files(root_path, follow_gitignore=follow_gitignore)
+    files = collect_files(root_path, follow_gitignore=follow_gitignore, follow_symlinks=follow_symlinks)
     tree = build_tree(files)
 
     files_content = []
@@ -62,6 +69,11 @@ def main():
         help="Do NOT respect .gitignore rules (include all files)"
     )
     parser.add_argument(
+        "--follow-symlinks",
+        action="store_true",
+        help="Follow symbolic links during scanning (disabled by default)"
+    )
+    parser.add_argument(
         "-f", "--format",
         choices=["txt", "md"],
         default="txt",
@@ -82,6 +94,7 @@ def main():
             include_content=args.include_content,
             mask_secrets=args.mask_secrets,
             follow_gitignore=args.follow_gitignore,
+            follow_symlinks=args.follow_symlinks,
             fmt=args.format,
         )
     except Exception as e:

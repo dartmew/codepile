@@ -16,6 +16,7 @@ Combine all your project files into one text file — perfect for sending to LLM
 
 - 📁 **Recursive scanning** – walks through all files in a directory.
 - 🚫 **Respects .gitignore** – optionally disable with `--no-gitignore`.
+- 🔗 **Skips symlinks by default** – opt in with `--follow-symlinks`.
 - 🌳 **Tree structure** – displays project hierarchy.
 - 📄 **Embedded content** – each file is shown with its path header.
 - 🔐 **Secrets masking** – hides passwords, tokens, keys (`--mask-secrets`).
@@ -87,6 +88,10 @@ Disable .gitignore
 ```bash
 pilepack . --no-gitignore
 ```
+Follow symbolic links explicitly
+```bash
+pilepack . --follow-symlinks
+```
 ## 📋 CLI Options
 | Option | Description |
 |--------|-------------|
@@ -95,6 +100,7 @@ pilepack . --no-gitignore
 | `--mask-secrets` | Mask passwords, tokens, API keys |
 | `-o, --output` | Write report to a file instead of stdout |
 | `--no-gitignore` | Do not respect `.gitignore` (include all files) |
+| `--follow-symlinks` | Follow symbolic links during scanning |
 | `-f, --format` | Output format: `txt` (default) or `md` |
 
 ## 🧪 Testing

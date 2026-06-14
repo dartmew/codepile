@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List
 
 
-def collect_files(root_path: Path, follow_gitignore: bool = True) -> list[Path]:
+def collect_files(root_path: Path, follow_gitignore: bool = True, follow_symlinks: bool = False) -> list[Path]:
     if not root_path.is_dir():
         raise NotADirectoryError(f"{root_path} does not exist or is not a directory")
 
@@ -17,6 +17,8 @@ def collect_files(root_path: Path, follow_gitignore: bool = True) -> list[Path]:
         if item.name == '.gitignore':
             continue
         if '.git' in item.parts:
+            continue
+        if item.is_symlink() and not follow_symlinks:
             continue
         if spec and is_ignored(item, root_path, spec):
             continue

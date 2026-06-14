@@ -25,6 +25,34 @@ def test_collect_files_excludes_git_and_gitignore(test_project):
     assert ".gitignore" not in rel_paths
     assert "main.py" in rel_paths
 
+def test_collect_files_skips_symlinks_by_default(test_project, tmp_path):
+    outside_file = tmp_path / "outside.txt"
+    outside_file.write_text("outside")
+    link = test_project / "linked-outside.txt"
+    try:
+        link.symlink_to(outside_file)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"symlinks are not supported here: {exc}")
+
+    files = collect_files(test_project, follow_gitignore=False)
+    rel_paths = [str(p) for p in files]
+
+    assert "linked-outside.txt" not in rel_paths
+
+def test_collect_files_can_follow_symlinks_when_requested(test_project, tmp_path):
+    outside_file = tmp_path / "outside.txt"
+    outside_file.write_text("outside")
+    link = test_project / "linked-outside.txt"
+    try:
+        link.symlink_to(outside_file)
+    except (NotImplementedError, OSError) as exc:
+        pytest.skip(f"symlinks are not supported here: {exc}")
+
+    files = collect_files(test_project, follow_gitignore=False, follow_symlinks=True)
+    rel_paths = [str(p) for p in files]
+
+    assert "linked-outside.txt" in rel_paths
+
 def test_build_tree():
     files = [Path("a/b/c.py"), Path("a/d.py"), Path("e.py")]
     tree = build_tree(files)
