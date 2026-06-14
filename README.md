@@ -3,8 +3,8 @@
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PyPI version](https://img.shields.io/pypi/v/pilepack)](https://pypi.org/project/pilepack/)
-[![Tests](https://img.shields.io/badge/tests-20%20passed-brightgreen)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-84%25-yellowgreen)](#-testing)
+[![Tests](https://img.shields.io/badge/tests-23%20passed-brightgreen.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-85%25-yellowgreen)](#-testing)
 [![CLI](https://img.shields.io/badge/CLI-ready-blue)](#-usage)
 
 **Pack your codebase into a single file for AI analysis**  
@@ -15,6 +15,7 @@ Combine all your project files into one text file — perfect for sending to LLM
 ## ✨ Features
 
 - 📁 **Recursive scanning** – walks through all files in a directory.
+- 💾 **Streaming output** – minimal memory usage even on huge codebases.
 - 🚫 **Respects .gitignore** – optionally disable with `--no-gitignore`.
 - 🔗 **Skips symlinks by default** – opt in with `--follow-symlinks`.
 - 🌳 **Tree structure** – displays project hierarchy.
@@ -120,13 +121,13 @@ Name                    Stmts   Miss  Cover
 -------------------------------------------
 pilepack\__init__.py        0      0   100%
 pilepack\__main__.py        3      3     0%
-pilepack\cli.py            51      7    86%
-pilepack\collector.py      30      1    97%
-pilepack\formatter.py      44      3    93%
+pilepack\cli.py            53      5    91%
+pilepack\collector.py      32      2    94%
+pilepack\formatter.py      39      2    95%
 pilepack\ignorer.py        21      3    86%
 pilepack\reader.py         31     12    61%
 -------------------------------------------
-TOTAL                     180     29    84%
+TOTAL                     179     27    85%
 ```
 
 ## 📄 License

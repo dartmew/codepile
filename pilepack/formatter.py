@@ -1,5 +1,4 @@
-from typing import Dict, List, Optional, Tuple, TextIO
-from pathlib import Path
+from typing import Dict, TextIO
 
 
 def _format_tree(tree: Dict, prefix: str = '', is_last: bool = True) -> str:

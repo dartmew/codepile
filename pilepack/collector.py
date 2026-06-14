@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List
 
 
-def collect_files(root_path: Path, follow_gitignore: bool = True, follow_symlinks: bool = False) -> list[Path]:
+def collect_files(root_path: Path, follow_gitignore: bool = True, follow_symlinks: bool = False) -> List[Path]:
     if not root_path.is_dir():
         raise NotADirectoryError(f"{root_path} does not exist or is not a directory")
 
