@@ -12,6 +12,16 @@ Combine all your project files into one text file — perfect for sending to LLM
 
 ---
 
+## Why pilepack?
+
+- 🪶 **Only 1 dependency** – runs anywhere Python 3.8+ is available.
+- ⚡ **Streaming engine** – packs huge codebases without eating RAM.
+- 🔐 **Secrets masking built-in** – no more leaked tokens in LLM chats.
+- 📂 **Full directory tree** + file contents in one clean text/markdown.
+- 🧪 **Tested, typed, actively maintained.**
+
+---
+
 ## ✨ Features
 
 - 📁 **Recursive scanning** – walks through all files in a directory.
